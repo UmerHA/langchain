@@ -4,11 +4,14 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-from langchain.callbacks.base import BaseCallbackHandler
+from langchain.callbacks.base import AsyncCallbackHandler
 from langchain.schema import AgentAction, AgentFinish
 
+# todo: konzept macht nur in async context sinn
+# 1. in async umwandeln
+# 2. return is_final_answer as well
 
-class GeneratorCallbackHandler(BaseCallbackHandler):
+class GeneratorCallbackHandler(AsyncCallbackHandler):
     """Callback Handler that yields output."""
 
     buffer: List[Tuple[str, str]] = []
@@ -50,22 +53,22 @@ class GeneratorCallbackHandler(BaseCallbackHandler):
         self.finished = False
         self.pause = pause
 
-    def on_chain_start(
+    async def on_chain_start(
         self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
     ) -> None:
         """Print out that we are entering a chain."""
         class_name = serialized["name"]
         self.buffer.append((f"Entering new {class_name} chain...", self._CHAIN))
 
-    def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
+    async def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
         """Print out that we finished a chain."""
         self.buffer.append(("Finished chain.", self._CHAIN))
 
-    def on_agent_action(self, action: AgentAction, **kwargs: Any) -> Any:
+    async def on_agent_action(self, action: AgentAction, **kwargs: Any) -> Any:
         """Run on agent action."""
         self.buffer.append((action.log, self._TOOL))
 
-    def on_tool_end(
+    async def on_tool_end(
         self,
         output: str,
         color: Optional[str] = None,
@@ -81,7 +84,7 @@ class GeneratorCallbackHandler(BaseCallbackHandler):
         # save llm prefix for use in on_text
         self.llm_prefix = llm_prefix
 
-    def on_text(
+    async def on_text(
         self,
         text: str,
         **kwargs: Any,
@@ -91,7 +94,7 @@ class GeneratorCallbackHandler(BaseCallbackHandler):
             text = self.llm_prefix + text
         self.buffer.append((text, self._LLM))
 
-    def on_agent_finish(self, finish: AgentFinish, **kwargs: Any) -> None:
+    async def on_agent_finish(self, finish: AgentFinish, **kwargs: Any) -> None:
         """Run on agent end."""
         self.buffer.append((finish.log, self._TOOL))
         self.finished = True
